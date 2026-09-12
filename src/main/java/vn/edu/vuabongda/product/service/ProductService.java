@@ -1,17 +1,24 @@
 package vn.edu.vuabongda.product.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import vn.edu.vuabongda.category.entity.Category;
 import vn.edu.vuabongda.category.repository.CategoryRepository;
 import vn.edu.vuabongda.product.dto.ProductRequestDTO;
 import vn.edu.vuabongda.product.dto.ProductResponseDTO;
 import vn.edu.vuabongda.product.entity.Product;
 import vn.edu.vuabongda.product.repository.ProductRepository;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import java.util.List;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.NoSuchElementException;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -51,15 +58,29 @@ public class ProductService {
     }
 
     // =========================
-    // GET ALL
+    // SEARCH + PAGINATION + SORT
     // =========================
-    public List<ProductResponseDTO> getAll() {
+    public Page<ProductResponseDTO> search(
+            String keyword,
+            Pageable pageable
+    ) {
 
-        return productRepository
-                .findAll()
-                .stream()
-                .map(this::toDTO)
-                .toList();
+        Page<Product> products;
+
+        if (keyword == null || keyword.isBlank()) {
+
+            products = productRepository.findAll(pageable);
+
+        } else {
+
+            products =
+                    productRepository.findByNameContainingIgnoreCase(
+                            keyword.trim(),
+                            pageable
+                    );
+        }
+
+        return products.map(this::toDTO);
     }
 
     // =========================
@@ -131,6 +152,79 @@ public class ProductService {
     }
 
     // =========================
+    // UPLOAD IMAGE
+    // =========================
+    public ProductResponseDTO uploadImage(
+            Long id,
+            MultipartFile file
+    ) {
+
+        Product product = productRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new NoSuchElementException(
+                                "Khong tim thay san pham id = " + id
+                        )
+                );
+
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "File anh khong duoc de trong"
+            );
+        }
+
+        String originalFilename = file.getOriginalFilename();
+
+        String extension = "";
+
+        if (originalFilename != null
+                && originalFilename.contains(".")) {
+
+            extension = originalFilename.substring(
+                    originalFilename.lastIndexOf(".")
+            );
+        }
+
+        String newFilename =
+                UUID.randomUUID() + extension;
+
+        Path uploadDirectory = Paths
+                .get("uploads", "products")
+                .toAbsolutePath()
+                .normalize();
+
+        try {
+
+            Files.createDirectories(uploadDirectory);
+
+            Path targetPath =
+                    uploadDirectory.resolve(newFilename);
+
+            Files.copy(
+                    file.getInputStream(),
+                    targetPath,
+                    StandardCopyOption.REPLACE_EXISTING
+            );
+
+        } catch (IOException e) {
+
+            throw new RuntimeException(
+                    "Khong the luu anh san pham",
+                    e
+            );
+        }
+
+        product.setImageUrl(
+                "/uploads/products/" + newFilename
+        );
+
+        Product saved =
+                productRepository.save(product);
+
+        return toDTO(saved);
+    }
+
+    // =========================
     // ENTITY -> DTO
     // =========================
     private ProductResponseDTO toDTO(Product product) {
@@ -149,27 +243,5 @@ public class ProductService {
                 product.getCreatedAt(),
                 product.getUpdatedAt()
         );
-    }
-    public Page<ProductResponseDTO> search(
-            String keyword,
-            Pageable pageable
-    ) {
-
-        Page<Product> products;
-
-        if (keyword == null || keyword.isBlank()) {
-
-            products = productRepository.findAll(pageable);
-
-        } else {
-
-            products =
-                    productRepository.findByNameContainingIgnoreCase(
-                            keyword.trim(),
-                            pageable
-                    );
-        }
-
-        return products.map(this::toDTO);
     }
 }
