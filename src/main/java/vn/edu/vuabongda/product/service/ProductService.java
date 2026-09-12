@@ -8,7 +8,8 @@ import vn.edu.vuabongda.product.dto.ProductRequestDTO;
 import vn.edu.vuabongda.product.dto.ProductResponseDTO;
 import vn.edu.vuabongda.product.entity.Product;
 import vn.edu.vuabongda.product.repository.ProductRepository;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -148,5 +149,27 @@ public class ProductService {
                 product.getCreatedAt(),
                 product.getUpdatedAt()
         );
+    }
+    public Page<ProductResponseDTO> search(
+            String keyword,
+            Pageable pageable
+    ) {
+
+        Page<Product> products;
+
+        if (keyword == null || keyword.isBlank()) {
+
+            products = productRepository.findAll(pageable);
+
+        } else {
+
+            products =
+                    productRepository.findByNameContainingIgnoreCase(
+                            keyword.trim(),
+                            pageable
+                    );
+        }
+
+        return products.map(this::toDTO);
     }
 }
