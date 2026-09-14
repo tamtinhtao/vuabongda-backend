@@ -11,6 +11,7 @@ import vn.edu.vuabongda.user.repository.UserRepository;
 import vn.edu.vuabongda.security.JwtUtil;
 import vn.edu.vuabongda.user.dto.LoginRequestDTO;
 import vn.edu.vuabongda.user.dto.LoginResponseDTO;
+import org.springframework.security.authentication.BadCredentialsException;
 
 @Service
 @RequiredArgsConstructor
@@ -58,13 +59,14 @@ public class UserService {
 
         User user = userRepository
                 .findByUsername(dto.getUsername())
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
+                .orElseThrow(
+                        () -> new BadCredentialsException(
                                 "Username hoac mat khau khong dung"
                         )
                 );
 
         if (!"ACTIVE".equals(user.getStatus())) {
+
             throw new IllegalArgumentException(
                     "Tai khoan da bi khoa"
             );
@@ -74,7 +76,8 @@ public class UserService {
                 dto.getPassword(),
                 user.getPassword()
         )) {
-            throw new IllegalArgumentException(
+
+            throw new BadCredentialsException(
                     "Username hoac mat khau khong dung"
             );
         }
