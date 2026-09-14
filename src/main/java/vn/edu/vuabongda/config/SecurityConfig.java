@@ -130,6 +130,8 @@ public class SecurityConfig {
                         .hasRole("ADMIN")
                         .requestMatchers("/api/cart/**")
                         .hasRole("CUSTOMER")
+                        .requestMatchers("/api/orders/**")
+                        .hasRole("CUSTOMER")
                         // Các API khác phải đăng nhập
                         .anyRequest()
                         .authenticated()
