@@ -23,6 +23,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import vn.edu.vuabongda.payment.service.PaymentService;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +41,8 @@ public class OrderService {
     private final CartItemRepository cartItemRepository;
 
     private final ProductRepository productRepository;
+
+    private final PaymentService paymentService;
 
     // ================================
     // DAT HANG TU CART
@@ -203,6 +206,13 @@ public class OrderService {
 
         orderItemRepository.saveAll(
                 orderItems
+        );
+        // ================================
+// TAO PAYMENT CHO ORDER
+// ================================
+        paymentService.createPayment(
+                savedOrder,
+                request.getPaymentMethod()
         );
 
         // ================================
