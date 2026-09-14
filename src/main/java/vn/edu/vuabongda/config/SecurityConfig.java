@@ -128,6 +128,8 @@ public class SecurityConfig {
                                 "/api/products/**"
                         )
                         .hasRole("ADMIN")
+                        .requestMatchers("/api/admin/orders/**")
+                        .hasRole("ADMIN")
                         .requestMatchers("/api/cart/**")
                         .hasRole("CUSTOMER")
                         .requestMatchers("/api/orders/**")

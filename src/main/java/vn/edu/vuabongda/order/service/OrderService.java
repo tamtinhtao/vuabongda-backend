@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import vn.edu.vuabongda.payment.service.PaymentService;
+import vn.edu.vuabongda.order.dto.UpdateOrderStatusRequestDTO;
 
 @Service
 @RequiredArgsConstructor
@@ -334,5 +335,122 @@ public class OrderService {
                 item.getQuantity(),
                 item.getSubtotal()
         );
+    }
+    // ================================
+// ADMIN - LAY TAT CA DON HANG
+// ================================
+    @Transactional(readOnly = true)
+    public List<OrderResponseDTO> getAllOrders() {
+
+        return orderRepository
+                .findAllByOrderByCreatedAtDesc()
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
+
+    // ================================
+// ADMIN - XEM CHI TIET DON HANG
+// ================================
+    @Transactional(readOnly = true)
+    public OrderResponseDTO getOrderById(
+            Long orderId
+    ) {
+
+        Order order = orderRepository
+                .findById(orderId)
+                .orElseThrow(
+                        () -> new NoSuchElementException(
+                                "Khong tim thay don hang"
+                        )
+                );
+
+        return toDTO(order);
+    }
+
+    // ================================
+// ADMIN - CAP NHAT TRANG THAI
+// ================================
+    public OrderResponseDTO updateOrderStatus(
+            Long orderId,
+            UpdateOrderStatusRequestDTO request
+    ) {
+
+        Order order = orderRepository
+                .findById(orderId)
+                .orElseThrow(
+                        () -> new NoSuchElementException(
+                                "Khong tim thay don hang"
+                        )
+                );
+
+        String currentStatus = order.getStatus();
+        String newStatus = request.getStatus();
+
+        // =================================
+        // DON DA HUY KHONG DUOC MO LAI
+        // =================================
+        if ("CANCELLED".equals(currentStatus)
+                && !"CANCELLED".equals(newStatus)) {
+
+            throw new IllegalArgumentException(
+                    "Don hang da huy khong the cap nhat lai"
+            );
+        }
+
+        // =================================
+        // DON HOAN THANH KHONG DUOC DOI LAI
+        // =================================
+        if ("COMPLETED".equals(currentStatus)
+                && !"COMPLETED".equals(newStatus)) {
+
+            throw new IllegalArgumentException(
+                    "Don hang da hoan thanh khong the cap nhat lai"
+            );
+        }
+
+        // =================================
+        // HUY DON -> HOAN TON KHO
+        // =================================
+        if ("CANCELLED".equals(newStatus)
+                && !"CANCELLED".equals(currentStatus)) {
+
+            List<OrderItem> orderItems =
+                    orderItemRepository.findByOrderId(
+                            order.getId()
+                    );
+
+            for (OrderItem orderItem : orderItems) {
+
+                Product product = productRepository
+                        .findById(
+                                orderItem.getProduct().getId()
+                        )
+                        .orElseThrow(
+                                () -> new NoSuchElementException(
+                                        "Khong tim thay san pham"
+                                )
+                        );
+
+                int oldStock =
+                        product.getStockQuantity();
+
+                int refundQuantity =
+                        orderItem.getQuantity();
+
+                product.setStockQuantity(
+                        oldStock + refundQuantity
+                );
+
+                productRepository.save(product);
+            }
+        }
+
+        order.setStatus(newStatus);
+
+        Order savedOrder =
+                orderRepository.save(order);
+
+        return toDTO(savedOrder);
     }
 }
